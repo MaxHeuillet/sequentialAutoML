@@ -6,4 +6,4 @@ The files to reproduce the figures are:
 - DESCRIPTIVE_STATISTICS
 - EXPERIMENT_RESULTS
 
-THe files to reproduce the Experiment are all the others.
+The other files are to reproduce the Experiment.
