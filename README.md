@@ -7,3 +7,5 @@ The files to reproduce the figures are:
 - EXPERIMENT_RESULTS
 
 The other files are to reproduce the Experiment.
+
+The results file used in the paper is too heavy for Git upload but is available upon request: maxime[[dot]]heuillet[[dot]]france[[at]]gmail[[dot]]com
