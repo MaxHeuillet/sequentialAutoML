@@ -33,14 +33,14 @@ def update(A, b, concat, y_concat, item_features, pipeline_id, dataset_idx, rewa
     ## step_size corresponds to s parameter in the paper
 
     
-    if math.isnan(y_concat.loc[dataset_idx,pipeline_id]) and nb_steps>=step_size: #line 25 in Algorithm1 of the paper
+    if math.isnan(y_concat.loc[dataset_idx,pipeline_id]) and nb_steps>=step_size: 
         
-        ## update LinUCB
+        ## update LinUCB parameters with the knowledge brought by the recommended pipeline
         A[pipeline_id] += np.outer( item_features[pipeline_id], item_features[pipeline_id] )
         b[pipeline_id] += reward * item_features[pipeline_id]
 
-    if math.isnan(y_concat.loc[dataset_idx,pipeline_id])  : #from R(t-1) to R'(t), line 15-16
-        ### ajouter la connaissance a Rc
+    if math.isnan(y_concat.loc[dataset_idx,pipeline_id])  : 
+        ### update knowledge R(t)
         concat = utils.append_update(concat, dataset_idx, pipeline_id, reward)
         y_concat.loc[dataset_idx, pipeline_id] = reward
 
@@ -74,8 +74,6 @@ def regret_linucb(X_init, y_init, step_size, knowledge, alpha, output_dir, fold_
     optimal = [] #optimal pipeline from the 175 pipelines benchmark (k^{\star}_{t})
 
     #### initialization of the weights for each UCB weights associated to a CF algorithm
-#     A1 = np.array([np.diag(np.ones(shape=40)) for _ in np.arange(K)])
-#     b1 = np.array([np.zeros(shape=40) for _ in np.arange(K)])
     A2 = np.array([np.diag(np.ones(shape=40)) for _ in np.arange(K)])
     b2 = np.array([np.zeros(shape=40) for _ in np.arange(K)])
     A3 = np.array([np.diag(np.ones(shape=40)) for _ in np.arange(K)])
@@ -94,13 +92,14 @@ def regret_linucb(X_init, y_init, step_size, knowledge, alpha, output_dir, fold_
 
     for dataset_idx in y_init.index: ### for each episode...
         
-        ### extract in the benchmark the row corresponding to this episode 
+        ### extract in the benchmarking the row corresponding to this episode 
         y_substr = pd.DataFrame( y_init.loc[dataset_idx] ).T
         
         ### and their associated meta features (un-used in the paper)
         X_substr = pd.DataFrame( X_init.loc[dataset_idx] ).T
         
-        ###### if in burn-in phase then explore randomly, with LinUCB otherwise
+        ###### if in burn-in phase then explore randomly, with LinUCB otherwise:
+        
         ### matrix factorization+bias
         A2, b2, y2, choix2 = utils.create_random(A2, b2, y_substr, knowledge) if nb_steps<step_size else utils.create_linucb_item(A2, b2, y_substr, item_features2, knowledge, alpha)
         explored2.append(choix2)
@@ -109,7 +108,7 @@ def regret_linucb(X_init, y_init, step_size, knowledge, alpha, output_dir, fold_
         explored3.append(choix3)
 
         if dataset_idx == 0:
-            ## if first episode, we need to initialize concat2, concat3 objects that are dictionnaries, then at each episode we add the supllementary information
+            ## if first episode, we need to initialize concat2, concat3 objects that are dictionnaries, then at each episode we add the suplementary information
 
             concat2 = utils.formating(y2, X_substr)
             y_concat2 = y2.copy()  ### sparse matrix genered with LinUCB exploration policy + matrix factorization+bias
@@ -121,10 +120,10 @@ def regret_linucb(X_init, y_init, step_size, knowledge, alpha, output_dir, fold_
 
             ### matrix facto+bias
             y_concat2 = pd.concat([y_concat2, y2])
-            concat2 = utils.append(concat2, y2, X_substr) ## append the information about current episode to the knowledge R(t)
+            concat2 = utils.append(concat2, y2, X_substr) ## from R(t-1) to R'(t)
             ### neuralCF
             y_concat3 = pd.concat([y_concat3, y3])
-            concat3 = utils.append(concat3, y3, X_substr)
+            concat3 = utils.append(concat3, y3, X_substr) ## from R(t-1) to R'(t)
 
         ##### this is to put into a dictionnary format the observation that is in the test
         test2 = utils.pred_formating(y2, X_substr)
@@ -132,16 +131,16 @@ def regret_linucb(X_init, y_init, step_size, knowledge, alpha, output_dir, fold_
  
         ### MF+bias
         history2, prediction2, timer2, update_features2 = models.one_fold(output_dir,concat2, test2, y_concat2, y2, '2', epochs, latent_size, knowledge, fold_id) # train the model on 75 epochs
-        reward_mf_bias, top, rcd_pipeline_id, top_pipeline_id = utils.update_argmax(y_substr, prediction2)
+        reward_mf_bias, top, rcd_pipeline_id, top_pipeline_id = utils.update_argmax(y_substr, prediction2) 
         recommended2.append(rcd_pipeline_id) # get the recommendation obtained after inference
-        concat2, y_concat2, A2, b2 = update(A2, b2, concat2, y_concat2, item_features2, rcd_pipeline_id, dataset_idx, reward_mf_bias, nb_steps, step_size) # update the knowledge R(t)
+        concat2, y_concat2, A2, b2 = update(A2, b2, concat2, y_concat2, item_features2, rcd_pipeline_id, dataset_idx, reward_mf_bias, nb_steps, step_size) # from R'(t) to R(t)
         tf.keras.backend.clear_session()
         
         ### NeurCF, same logic as previous paragraph
         history3, prediction3, timer3, update_features3 = models.one_fold(output_dir,concat3, test3, y_concat3, y3, '3', epochs, latent_size, knowledge, fold_id)
         reward_neurcf, top, rcd_pipeline_id, top_pipeline_id = utils.update_argmax(y_substr, prediction3)
         recommended3.append(rcd_pipeline_id)
-        concat3, y_concat3, A3, b3 = update(A3, b3, concat3, y_concat3, item_features3, rcd_pipeline_id, dataset_idx, reward_neurcf, nb_steps, step_size)
+        concat3, y_concat3, A3, b3 = update(A3, b3, concat3, y_concat3, item_features3, rcd_pipeline_id, dataset_idx, reward_neurcf, nb_steps, step_size) # from R'(t) to R(t)
         tf.keras.backend.clear_session()
 
 
@@ -198,8 +197,8 @@ def main(input_dir, output_dir):
         X_init, y_init = shuffle(X_init, y_init)
         y_init = y_init.reset_index(drop=True)
         X_init = X_init.reset_index(drop=True)
-        alpha = 0 ## parametre de la exploration policy UCB
-        step_size = 10 ### quand est ce que on update les latent features P et la taille de linitialization
+        alpha = 0.01 ## exploration parameter of the LinUCB algorithm
+        step_size = 10 ### corresponds to parameter s in the paper
 
         print(' c = 2')
         regret_linucb(X_init, y_init, step_size, 2, alpha, output_dir, fold_id)

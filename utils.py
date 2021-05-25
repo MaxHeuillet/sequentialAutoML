@@ -149,41 +149,12 @@ def create_linucb_item(A, b, truth, item_features, knowledge, alpha):
 ######################################################################
 
 def load_data_175_avg(input_dir, nb_datasets):
-    
-    ## this function loads the pipeline benchmarking
-    
-#     data_dir = 'your_dir/RECOMMENDER-AUTOML/data'
-    data_dir = '/nas-data/ModelReco/outputs'
-#     data_dir = '/home/mheuillet/nas/corpus-balancing/ModelReco/outputs'
-      
-    #### UNIDIM 3.1
-    df1 = pd.read_csv(  os.path.join(data_dir,'model-reco-job-0.1.dev33-g235c521.d20210207223236/database.csv' ), header=None)
-    #### UNIDIM 3.2
-    df2 = pd.read_csv( os.path.join(data_dir,'model-reco-job-0.1.dev33-g235c521.d20210207223337/database.csv'), header=None)
-    #### UNIDIM 3.3
-    df3 = pd.read_csv( os.path.join(data_dir,'model-reco-job-0.1.dev33-g235c521.d20210207223444/database.csv'), header=None)
-    #### UNIDIM 3.4
-    df4 = pd.read_csv( os.path.join(data_dir,'model-reco-job-0.1.dev33-g235c521.d20210207223833/database.csv'), header=None)
 
-    df = pd.concat( [df1, df2, df3, df4] ) #concatenate the 4 datasets
-    df = df.dropna()
-    df = df.reset_index(drop=True)
-    
-    liste = set(df[0]) ## this is to substract a given number of datasets (unused in the paper)
-    rdm = random.sample( liste, k = min( nb_datasets, len( liste ) ) )
-    df = df[ df[0].isin(rdm) ]
-    
-    ## group_by mean the result of the 5-folds cross validation
-    df_GB = df.groupby(0).mean()
-    df_GB.index = range( len(df_GB.index) )
-    df_GB = df_GB.T.reset_index(drop=True).T
-    
-    y_GB = df_GB[ range(175) ]
-    scaler2 = StandardScaler()
-    X_GB = df_GB[ range(350, 379)  ] # extract the meta-features
-    scaler2.fit(X_GB) #normalize them
-    X_GB = pd.DataFrame( scaler2.transform(X_GB), index = y_GB.index )
-    
+    #### pipeline benchmarking of 175 pipelines over 666 datasets
+    y_GB = pd.read_csv( './benchmarking.csv' , header=None)
+    #### associated meta-features
+    X_GB = pd.read_csv( './meta-features.csv' , header=None )
+
     return X_GB, y_GB
 
 ##############################################################

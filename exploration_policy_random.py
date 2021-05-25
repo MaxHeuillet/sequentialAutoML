@@ -1,3 +1,6 @@
+## this file corresponds to the random exploration policy
+## please refer to the detailed comments in exploration_policy_linucb.py file because the functions are very similar, the only difference is the exploration policy function, here we use the random exploration policy 
+
 import click
 from pathlib import Path
 from sklearn.utils import shuffle
@@ -32,7 +35,7 @@ def update(concat, y_concat, pipeline_id, dataset_idx, reward):
     return concat, y_concat
 
 
-def regret_rdm(X_init, y_init, X_selection, y_selection, knowledge, output_dir, fold_id):
+def regret_rdm(X_init, y_init, knowledge, output_dir, fold_id):
     
     ## please refer to the comments in function regret_ucb in exploration_policy_linucb.py file because the functions are very similar, the only difference is the exploration policy function, here we use the random exploration policy described in the paper
     
@@ -72,10 +75,10 @@ def regret_rdm(X_init, y_init, X_selection, y_selection, knowledge, output_dir, 
         else:
             
             y_concat2 = pd.concat([y_concat2, y])
-            concat2 = utils.append(concat2, y, X_substr)
+            concat2 = utils.append(concat2, y, X_substr) # from R(t-1) to R'(t)
             
             y_concat3 = pd.concat([y_concat3, y])
-            concat3 = utils.append(concat3, y, X_substr)
+            concat3 = utils.append(concat3, y, X_substr) # from R(t-1) to R'(t)
 
             
         test = utils.pred_formating(y, X_substr)
@@ -84,14 +87,14 @@ def regret_rdm(X_init, y_init, X_selection, y_selection, knowledge, output_dir, 
         
         ### MF+bias
         history2, prediction2, timer2, _ = models.one_fold(output_dir,concat2, test, y_concat2, y, '2', epochs, latent_size, knowledge, fold_id)
-        reward_mf_bias, top, rcd_pipeline_id, top_pipeline_id = utils.update_argmax(y_substr, prediction2)
+        reward_mf_bias, top, rcd_pipeline_id, top_pipeline_id = utils.update_argmax(y_substr, prediction2) # from R'(t) to R(t)
         recommended2.append(rcd_pipeline_id)
         concat2, y_concat2 = update(concat2, y_concat2, rcd_pipeline_id, dataset_idx, reward_mf_bias)
         tf.keras.backend.clear_session()
 
         ### NeurCF
         history3, prediction3, timer3, _ = models.one_fold(output_dir,concat3, test, y_concat3, y, '3', epochs, latent_size, knowledge, fold_id)
-        reward_neurcf, top, rcd_pipeline_id, top_pipeline_id = utils.update_argmax(y_substr, prediction3)
+        reward_neurcf, top, rcd_pipeline_id, top_pipeline_id = utils.update_argmax(y_substr, prediction3) # from R(t-1) to R'(t)
         recommended3.append(rcd_pipeline_id)
         concat3, y_concat3 = update(concat3, y_concat3, rcd_pipeline_id, dataset_idx, reward_neurcf)
         tf.keras.backend.clear_session()
@@ -134,32 +137,18 @@ def main(input_dir, output_dir):
         
         X_init, y_init = utils.load_data_175_avg('a', 666)
 
-        selection = random.sample( set(range(665)), 140) 
-
         X_init, y_init = shuffle(X_init, y_init)
-
-        X_selection = X_init.iloc[selection,]
-        y_selection = y_init.iloc[selection,]
-        y_selection = y_selection.reset_index(drop=True)
-        X_selection = X_selection.reset_index(drop=True)
-
-        X_init = X_init.drop(selection)
-        y_init = y_init.drop(selection)
 
         y_init = y_init.reset_index(drop=True)
         X_init = X_init.reset_index(drop=True)
     
         print('2')
-        regret_rdm(X_init,y_init, X_selection, y_selection, 2, output_dir, fold_id)
+        regret_rdm(X_init,y_init, 2, output_dir, fold_id)
         print('4')
-        regret_rdm(X_init,y_init, X_selection, y_selection, 4, output_dir, fold_id)
+        regret_rdm(X_init,y_init,  4, output_dir, fold_id)
         print('6')
-        regret_rdm(X_init,y_init, X_selection, y_selection, 6, output_dir, fold_id)
-        
-#         X_init, y_init = utils.load_data_175_avg('a', 666)
-#         X_init, y_init = shuffle(X_init, y_init)
-#         y_init = y_init.reset_index(drop=True)
-#         X_init = X_init.reset_index(drop=True)
+        regret_rdm(X_init,y_init, 6, output_dir, fold_id)
+
         
 if __name__ == "__main__":
     main()
