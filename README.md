@@ -1,4 +1,4 @@
-# AutoML-ICML2021
+# Sequential AutoML 2021
 
 This corresponds to all the code associated to our sequential AutoML project 
 
